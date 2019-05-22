@@ -14,18 +14,8 @@ mfi_tidy <- read_csv('data/raw_data/MulligansFlatInfiltration.csv', skip = 5) %>
   rename (minus4cm = atPotential4CmSteadyStateInfiltrationRateMlMin,
           minus1cm = atPotential1CmSteadyStateInfiltrationRateMlMin,
           plus1cm = atPotential1CmSteadyStateInfiltrationRateMlMin_2) %>%
-  gather(key = 'discPotential', value = 'waterInfiltraion.ml_min', c('minus4cm','minus1cm','plus1cm'))
-
-# Make the siteID and element columns factors (couldn't do it in pipe)
-mfi_tidy$siteId <- as.factor(mfi_tidy$siteId)
-mfi_tidy$element <- as.factor(mfi_tidy$element)
-mfi_tidy$discPotential <- as.factor(mfi_tidy$discPotential) #Not sure about this!
+  gather(key = 'discPotential', value = 'waterInfiltration.ml_min', c('minus4cm','minus1cm','plus1cm'))
 
 str(mfi_tidy)
 
 write_csv(mfi_tidy, path = 'data/munged_data/MulligansFlatInfiltration_tidy.csv')
-
-ggplot(mfi_tidy, aes(x = siteId, y = g_cm3, colour = element))+
-  geom_boxplot()
-ggplot(mfi_tidy, aes(x = element, y = g_cm3, colour = siteId))+
-  geom_boxplot()
