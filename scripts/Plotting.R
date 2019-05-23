@@ -17,7 +17,7 @@ ggplot(mfi, aes(x = element, y = waterInfiltration.ml_min, colour = discPotentia
 
 #plot 2
 # Shows the possibility of some influence of element on water infiltration
-ggplot(mfi, aes(x = factor(discPotential, level = disc_order), y = waterInfiltration.ml_min, colour = element)) + 
+ggplot(mfi, aes(x = discPotential, y = waterInfiltration.ml_min, colour = element)) + 
   geom_boxplot()
 
 # Due to the difference in discPotential need to test the log of the water infiltration
@@ -38,14 +38,6 @@ ggplot(mfi, aes(x =  discPotential, y = log(waterInfiltration.ml_min), colour = 
 # Showing no difference between the elements
 ggplot(mfi, aes(x = element, y = log(waterInfiltration.ml_min))) + 
   geom_boxplot()
-
-ggplot (mfi, aes(element, log(waterInfiltration.ml_min))) +
-  geom_point() +
-  facet_wrap(~siteId)
-
-ggplot (mfi, aes(avgMC.percent, avgBD.g_cm3)) +
-  geom_point() +
-  facet_wrap(~siteId)
 
 ## site ID vs. water infiltration vs. disc potential
 
@@ -91,7 +83,7 @@ ggplot(mfi, aes(avgBD.g_cm3, avgMC.percent, colour = log(waterInfiltration.ml_mi
 # plot 13
 # Teases out previous plot, shows some loose increase in water Infil as MC increses but plots are all over the place
 ggplot(mfi, aes(avgMC.percent, log(waterInfiltration.ml_min)))+
-  geom_point(size = 4)+
+  geom_point(size = 3)+
   geom_smooth()
 
 # plot 14

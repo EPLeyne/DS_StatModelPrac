@@ -1,0 +1,182 @@
+---
+title: "Mulligans_Flat_Infiltration"
+author: "Emmett Leyne"
+date: "23 May 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+###Project Description
+
+The Mulligans Flat woodland sanctuary is managed by the ACT Parks & Wildlife, where Adrian Manning from ANU already had some sites marked out in the yellow box woodland. Each site had a number of different elements (tree, old logs, dispersed logs, top of clumped logs, bottom of clumped logs, & open grassland). Gordon McLachlan collected the field data with the assistance of John Gillen and Pauline Molinier. Soil water infiltration was measured with disc permeameters. A saturated disc permeameter suspended over ring 1cm deep of water for the +1cm readings, and unsaturated disc permeameter on a thin layer of fine Bungendore sand as a contact material for the -1cm & -4cm readings. Data was recorded on the paper datasheets in the field and then entered in the excel data sheet back at the lab. Bulk density cores were hit into the ground and trimmed & wrapped to retain moisture in the field. At the lab these were unwrapped, weighed & dried in a 105oC oven and weighed again. The weights & core dimensions were recorded in the excel file with other data. Gordon McLachlan did the lab work and data entry into the excel file where the results were graphed.
+
+Objective of the analysis is to establish a baseline of water infiltration at the Mulligan's Flat site before the release of bettongs into the site. An alternate objective is to measure whether there is a signifcant difference in the water infiltration between the 6 types of elements in that site (open ground, tree, dispersed logs, clumped logs (top and bottom) and old log).
+
+Repository: https://github.com/EPLeyne/DS_StatModelPrac
+
+## Libraries used..
+
+```{r, include = FALSE, echo = TRUE}
+library(tidyverse)
+library(janitor)
+library(emmeans)
+library(lmerTest)
+library(IDPmisc)
+```
+
+## Data tidying..
+
+1. Import .csv file and remove the first 5 lines
+2. Clean the names to be of the same 'lower camel' structure.
+3. Remove 2 columns and the last row that contained no data.
+4. Remove columns that contain unessesary data to the analysis or contain data that is duplicated.
+5. Create columns of the averages of Bulk Density data and Moisture Content data and remove the original columns.
+6. Rename the 3 Water inifltraion columns into something more readable.
+7. Gather the water infiltration readings together with the disc Potential as the key.
+
+
+```{r, include=FALSE}
+mfi_tidy <- read_csv('data/raw_data/MulligansFlatInfiltration.csv', skip = 5)
+
+```
+```{r, include = FALSE}
+mfi_tidy <- read_csv('data/raw_data/MulligansFlatInfiltration.csv', skip = 5) %>% # Read the data and remove first five blank lines
+  clean_names(case = 'lower_camel') %>% # clean column names to lower camel
+  select(-c('x14','x15')) %>% # remove 2 columns that contain no data  
+  drop_na() %>% # Drop last line that was just NA values
+  select(-c('siteNo','elementNo','date', 'averageBulkDensityGCm3')) %>%  # remove date and columns that are unnessesary as the IDs will be factors
+  mutate(avgBD.g_cm3 = ((bulkDensity1GCm3 + bulkDensity2GCm3)/2)) %>% #Create columns of avaerages for the soil bulk density
+  mutate(avgMC.percent = (bd1PercentMoistureContent + bd2PercentMoistureContent)/2) %>% # & soil moisture content
+  select(-c('bulkDensity1GCm3', 'bulkDensity2GCm3', 'bd1PercentMoistureContent', 'bd2PercentMoistureContent')) %>% 
+  rename (minus4cm = atPotential4CmSteadyStateInfiltrationRateMlMin,
+          minus1cm = atPotential1CmSteadyStateInfiltrationRateMlMin,
+          plus1cm = atPotential1CmSteadyStateInfiltrationRateMlMin_2) %>%
+  gather(key = 'discPotential', value = 'waterInfiltration.ml_min', c('minus4cm','minus1cm','plus1cm'))
+
+```
+```{r, include = FALSE}
+write_csv(mfi_tidy, path = 'data/munged_data/MulligansFlatInfiltration_tidy.csv')
+```
+
+## Plotting
+
+```{r, include = FALSE}
+mfi <- read_csv('data/munged_data/MulligansFlatInfiltration_tidy.csv')
+
+```
+Make the three factors and blocks into factors.
+```{r}
+mfi$siteId <- factor(mfi$siteId)
+mfi$element <- factor(mfi$element)
+mfi$discPotential <- factor(mfi$discPotential, levels = c('minus4cm','minus1cm','plus1cm'))
+```
+
+Quick first look at the data with the key measurement (water infiltration) on the x axis....
+
+```{r echo = FALSE}
+ggplot(mfi, aes(x = discPotential, y = waterInfiltration.ml_min, colour = element)) + 
+  geom_boxplot()
+```
+
+This plot shows the increase in water infilration between the 3 disc potentials, which is exactly as expected (as the suction applied increases then the rate of water infiltration will also increase). However this results in a variation between the measurments that confounds the analysis of the data.
+Therefore there is a clear justification to use the log values of the water infiltration to combat the varitions...
+
+```{r echo = FALSE}
+ggplot(mfi, aes(x =  discPotential, y = log(waterInfiltration.ml_min), colour = element)) + 
+  geom_boxplot() +
+  geom_point(position = position_dodge(width=0.75))
+```
+
+With the log transformation the expected difference between disc potential measurements is still clear and follows an expected trend.
+Less obvious that there are differences between elements but still possible.
+
+NB. All following plots and analysis of water infiltration is done on log transformation.
+
+
+Core question of the experiment is the effect of element of water infiltration.
+
+```{r echo = FALSE}
+ggplot(mfi, aes(x = element, y = log(waterInfiltration.ml_min))) + 
+  geom_boxplot()
+```
+
+Crude but indicates that there is no real relationship between the element and the water infiltration.
+
+
+The different sites may have different soils and there may be a site influence
+
+```{r echo = FALSE}
+ggplot(mfi, aes(x = siteId, y = log(waterInfiltration.ml_min))) + 
+  geom_boxplot()
+```
+
+A crude plot but indicates that site is playing a factor in the differences in the water infiltration measurements.
+
+So need to take a look at the differences that may be within the sites and need to look at the soil measurments made (moisture content and bulk density)
+
+```{r echo = FALSE}
+ggplot (mfi, aes(avgMC.percent, avgBD.g_cm3)) +
+  geom_point() +
+  facet_wrap(~siteId)
+```
+
+Shows a clear clustering of the moisture content and soil bulk density measurements between sites (with the exception of the MF27A-1A (center))
+
+So need to see if moisture content or bulk density has an impact on the water infiltraion rate...
+
+```{r echo = FALSE}
+ggplot(mfi, aes(avgBD.g_cm3, avgMC.percent, colour = log(waterInfiltration.ml_min)))+
+  geom_point(size = 4) +
+  geom_smooth()  +
+  scale_color_gradientn(colours = rainbow(5))
+```
+
+Seems to show a correlation between low water infiltration rate and low moisture content and/or high bulk density, but the lack of data points in the bottom left and top right of the pots makes it difficult to tell if it is one or the other or the interaction of them both.
+
+If we take a quick look at the soil moisture content there may be some connection between the moisture content and the element.....
+
+```{r echo = FALSE}
+ggplot(mfi, aes(element, avgMC.percent, colour = log(waterInfiltration.ml_min))) + 
+  geom_point(size=4)+
+  scale_color_gradientn(colours = rainbow(5))
+```
+
+but if we look at moisture content and the site ID...
+
+```{r echo = FALSE}
+ggplot(mfi, aes(element, avgMC.percent, colour = siteId)) + 
+  geom_point(size=4)
+```
+
+the site may play a bigger factor in the moisture content of the soil than the element.
+
+
+
+
+
+## Statistical Analysis
+
+null hypothesis 1 - There is no effect of element on the water infiltration rate
+
+Due to the additional confouding factors of the soil moisture content and soil bulk density there are a further two null hypotheses.
+null hypothesis 2 - There is no effect of the soil moisture content on the water infiltration rate.
+null hypothesis 3 - There is no effect of the soil bulk density on the water infiltration rate.
+null hypothesis 4 - There is no effect of the soil bulk density AND soil moisture content on water infiltration rate.
+null hypothesis 5 - There is no effect of element on soil moisture content.
+null hypothesis 6 - There is no effect of element on soil bulk density.
+
+Due to problems with lm() and lmer() having issues analysing log transformations of '-Inf' that result had to be excluded from the analysis
+```{r}
+mfi$log_wI <- NaRV.omit(log(mfi$waterInfiltration.ml_min))
+
+```
+
+Model interactions between water infiltration and element...
+
+```{r}
+mfi_lm6 <- lm(log_wI ~ element, data = mfi)
+anova(mfi_lm6)
+```
+
+
