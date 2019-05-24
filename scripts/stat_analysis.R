@@ -20,12 +20,7 @@ mfi <- read_csv('data/munged_data/MulligansFlatInfiltration_tidy.csv')
 mfi$siteId <- factor(mfi$siteId)
 mfi$element <- factor(mfi$element)
 mfi$discPotential <- factor(mfi$discPotential, levels = c('minus4cm','minus1cm','plus1cm'))
-mfi$log_wI <- NaRV.omit(log(mfi$waterInfiltration.ml_min))
-
-# One of the log results is -Inf which prevents lm analysis
-mfi <- mfi %>% mutate_if(is.numeric, list(~na_if(., -Inf)))
-
-
+mfi$log_wI <- log(mfi$waterInfiltration.ml_min)
 
 # Model water Infiltration rate against MC% --- significant
 mfi_lm1 <- lm(log_wI ~ avgMC.percent, data = mfi)
@@ -37,6 +32,10 @@ emmeans(mfi_lm1, pairwise~avgMC.percent)
 mfi_lm2 <- lm(log_wI ~ avgBD.g_cm3, data = mfi)
 anova(mfi_lm2)
 summary(mfi_lm2)
+
+mfi_lm1000 <- lm(log_wI ~ avgBD.g_cm3 * avgMC.percent, data = mfi)
+anova(mfi_lm1000)
+
 
 #Test if correlation between MC and BD --- significant
 mfi_lm9 <- lm(avgMC.percent~avgBD.g_cm3 + siteId, mfi)

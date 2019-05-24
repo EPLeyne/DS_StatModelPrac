@@ -5,7 +5,7 @@ library(janitor)
 
 mfi_tidy <- read_csv('data/raw_data/MulligansFlatInfiltration.csv', skip = 5) %>% # Read the data and remove first five blank lines
   clean_names(case = 'lower_camel') %>% # clean column names to lower camel
-  select(-c('x14','x15')) %>% # remove 2 columns that contain no data  
+#  select(-c('x14','x15')) %>% # remove 2 columns that contain no data  
   drop_na() %>% # Drop last line that was just NA values
   select(-c('siteNo','elementNo','date', 'averageBulkDensityGCm3')) %>%  # remove date and columns that are unnessesary as the IDs will be factors
   mutate(avgBD.g_cm3 = ((bulkDensity1GCm3 + bulkDensity2GCm3)/2)) %>% #Create columns of avaerages for the soil bulk density
